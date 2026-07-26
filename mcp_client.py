@@ -232,14 +232,20 @@ class MCPManager:
     def __init__(self, config_file: str = CONFIG_FILE):
         self.config_file = config_file
         self.servers: Dict[str, MCPServerProcess] = {}
+        self.config_error: Optional[str] = None
 
     def load_config(self) -> Dict[str, Any]:
         if not os.path.exists(self.config_file):
+            self.config_error = None
             return {"mcpServers": {}}
         try:
             with open(self.config_file, "r") as f:
-                return json.load(f)
-        except Exception:
+                data = json.load(f)
+                self.config_error = None
+                return data
+        except Exception as e:
+            self.config_error = f"JSON Syntax Error in {os.path.basename(self.config_file)}: {str(e)}"
+            sys.stderr.write(f"[MCP] {self.config_error}\n")
             return {"mcpServers": {}}
 
     def save_config(self, config: Dict[str, Any]):

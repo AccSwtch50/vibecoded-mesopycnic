@@ -87,6 +87,7 @@ class SimpleChatHandler(http.server.BaseHTTPRequestHandler):
             active_servers = [s["name"] for s in statuses if s["running"]]
             return self._send_json({
                 "config": config,
+                "config_error": mcp_manager.config_error,
                 "statuses": statuses,
                 "active_servers": active_servers,
                 "tools": tools

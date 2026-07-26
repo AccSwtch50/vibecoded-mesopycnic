@@ -301,6 +301,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Render Tools List & Server Statuses in Modal
                 mcpToolsList.innerHTML = '';
 
+                if (data.config_error) {
+                    const cfgErrCard = document.createElement('div');
+                    cfgErrCard.className = 'tool-card';
+                    cfgErrCard.style.borderColor = 'rgba(244, 63, 94, 0.4)';
+                    cfgErrCard.style.background = 'rgba(244, 63, 94, 0.08)';
+                    cfgErrCard.innerHTML = `
+                        <div class="tool-card-name" style="color: var(--accent-rose);">⚠️ Configuration File Error</div>
+                        <div class="tool-card-desc" style="color: #fca5a5;">${escapeHtml(data.config_error)}</div>
+                    `;
+                    mcpToolsList.appendChild(cfgErrCard);
+                }
+
                 // Show server status warnings if any server failed
                 if (data.statuses && Array.isArray(data.statuses)) {
                     data.statuses.forEach(s => {
