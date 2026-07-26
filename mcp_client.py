@@ -4,9 +4,11 @@ import subprocess
 import threading
 import sys
 import time
+import shutil
 from typing import Dict, List, Any, Optional
 
-CONFIG_FILE = "mcp_servers.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, "mcp_servers.json")
 
 class MCPServerProcess:
     def __init__(self, name: str, config: Dict[str, Any]):
@@ -17,48 +19,103 @@ class MCPServerProcess:
         self.request_id = 0
         self.tools: List[Dict[str, Any]] = []
         self.is_running = False
+        self.error_message: Optional[str] = None
+        self.stderr_lines: List[str] = []
+        self._stderr_thread: Optional[threading.Thread] = None
 
     def _get_next_id(self) -> int:
         self.request_id += 1
         return self.request_id
 
+    def _read_stderr(self):
+        if not self.proc or not self.proc.stderr:
+            return
+        try:
+            for line in self.proc.stderr:
+                if line:
+                    self.stderr_lines.append(line.strip())
+                    if len(self.stderr_lines) > 50:
+                        self.stderr_lines.pop(0)
+        except Exception:
+            pass
+
     def start(self):
         command = self.config.get("command")
-        args = self.config.get("args", [])
+        raw_args = self.config.get("args", [])
         env_vars = self.config.get("env", {})
 
         if not command:
-            raise ValueError(f"No command specified for MCP server '{self.name}'")
+            self.error_message = f"No command specified for MCP server '{self.name}'"
+            sys.stderr.write(f"[{self.name}] {self.error_message}\n")
+            return
 
-        cmd_list = [command] + args
+        # Resolve command executable if needed
+        executable = shutil.which(command) or command
+
+        # Resolve relative file paths in args
+        args = []
+        for arg in raw_args:
+            rel_path = os.path.join(BASE_DIR, arg)
+            if os.path.exists(rel_path):
+                args.append(rel_path)
+            else:
+                args.append(arg)
+
+        cmd_list = [executable] + args
         full_env = os.environ.copy()
         full_env.update(env_vars)
 
-        self.proc = subprocess.Popen(
-            cmd_list,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            env=full_env
-        )
+        try:
+            self.proc = subprocess.Popen(
+                cmd_list,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                cwd=BASE_DIR,
+                env=full_env
+            )
+        except Exception as e:
+            self.error_message = f"Failed to spawn subprocess for MCP server '{self.name}': {str(e)}"
+            sys.stderr.write(f"[{self.name}] {self.error_message}\n")
+            return
+
+        # Start stderr reader thread to prevent pipe blocking deadlocks
+        self._stderr_thread = threading.Thread(target=self._read_stderr, daemon=True)
+        self._stderr_thread.start()
+
         self.is_running = True
 
-        # Perform initialize handshake
-        init_res = self._send_request("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "SimpleChat", "version": "1.0.0"}
-        })
+        try:
+            # Perform initialize handshake
+            init_res = self._send_request("initialize", {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "SimpleChat", "version": "1.0.0"}
+            }, timeout=8.0)
 
-        # Send initialized notification
-        self._send_notification("notifications/initialized", {})
+            if not init_res:
+                stderr_text = "\n".join(self.stderr_lines)
+                raise RuntimeError(f"No response to initialize. Stderr output:\n{stderr_text}")
 
-        # Fetch tools
-        tools_res = self._send_request("tools/list", {})
-        if tools_res and "result" in tools_res and "tools" in tools_res["result"]:
-            self.tools = tools_res["result"]["tools"]
+            # Send initialized notification
+            self._send_notification("notifications/initialized", {})
+
+            # Fetch tools
+            tools_res = self._send_request("tools/list", {}, timeout=8.0)
+            if tools_res and "result" in tools_res and "tools" in tools_res["result"]:
+                self.tools = tools_res["result"]["tools"]
+
+            self.error_message = None
+            sys.stdout.write(f"✓ MCP Server '{self.name}' initialized successfully with {len(self.tools)} tool(s).\n")
+            sys.stdout.flush()
+
+        except Exception as e:
+            self.is_running = False
+            self.error_message = f"Initialization failed: {str(e)}"
+            sys.stderr.write(f"[{self.name}] {self.error_message}\n")
+            self.stop()
 
     def _send_request(self, method: str, params: Dict[str, Any], timeout: float = 10.0) -> Optional[Dict[str, Any]]:
         with self.lock:
@@ -84,9 +141,12 @@ class MCPServerProcess:
             # Read lines until we find matching response ID
             start_time = time.time()
             while time.time() - start_time < timeout:
+                if self.proc.poll() is not None:
+                    break
                 out_line = self.proc.stdout.readline()
                 if not out_line:
-                    break
+                    time.sleep(0.05)
+                    continue
                 out_line = out_line.strip()
                 if not out_line:
                     continue
@@ -116,10 +176,14 @@ class MCPServerProcess:
                 pass
 
     def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
-        res = self._send_request("tools/call", {
-            "name": tool_name,
-            "arguments": arguments
-        })
+        try:
+            res = self._send_request("tools/call", {
+                "name": tool_name,
+                "arguments": arguments
+            }, timeout=30.0)
+        except Exception as e:
+            return f"Error executing tool '{tool_name}' on MCP server '{self.name}': {e}"
+
         if not res:
             return f"Error: No response from MCP server '{self.name}' for tool '{tool_name}'"
 
@@ -190,27 +254,37 @@ class MCPManager:
         for s_name, s_cfg in mcp_servers.items():
             if s_cfg.get("enabled", True) is False:
                 continue
-            try:
-                srv = MCPServerProcess(s_name, s_cfg)
-                srv.start()
-                self.servers[s_name] = srv
-            except Exception as e:
-                sys.stderr.write(f"Failed to start MCP server '{s_name}': {e}\n")
+            srv = MCPServerProcess(s_name, s_cfg)
+            srv.start()
+            self.servers[s_name] = srv
 
     def stop_all(self):
         for srv in self.servers.values():
             srv.stop()
         self.servers.clear()
 
+    def get_server_statuses(self) -> List[Dict[str, Any]]:
+        statuses = []
+        for s_name, srv in self.servers.items():
+            statuses.append({
+                "name": s_name,
+                "running": srv.is_running,
+                "tools_count": len(srv.tools),
+                "error": srv.error_message,
+                "stderr": "\n".join(srv.stderr_lines[-10:]) if srv.stderr_lines else ""
+            })
+        return statuses
+
     def get_openai_tools(self) -> List[Dict[str, Any]]:
         openai_tools = []
         for s_name, srv in self.servers.items():
+            if not srv.is_running:
+                continue
             for t in srv.tools:
                 tool_name = t.get("name")
                 desc = t.get("description", "")
                 schema = t.get("inputSchema", {"type": "object", "properties": {}})
 
-                # Format tool name: serverName__toolName or toolName
                 func_name = f"{s_name}__{tool_name}"
                 openai_tools.append({
                     "type": "function",
@@ -232,10 +306,11 @@ class MCPManager:
         if s_name and s_name in self.servers:
             return self.servers[s_name].call_tool(tool_name, arguments)
 
-        # Fallback: search across servers for matching tool name
         for s_key, srv in self.servers.items():
+            if not srv.is_running:
+                continue
             for t in srv.tools:
                 if t.get("name") == tool_name:
                     return srv.call_tool(tool_name, arguments)
 
-        return f"Error: No MCP server found for tool call '{func_name}'"
+        return f"Error: No active MCP server found for tool call '{func_name}'"

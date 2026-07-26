@@ -83,9 +83,11 @@ class SimpleChatHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/mcp/servers":
             config = mcp_manager.load_config()
             tools = mcp_manager.get_openai_tools()
-            active_servers = list(mcp_manager.servers.keys())
+            statuses = mcp_manager.get_server_statuses()
+            active_servers = [s["name"] for s in statuses if s["running"]]
             return self._send_json({
                 "config": config,
+                "statuses": statuses,
                 "active_servers": active_servers,
                 "tools": tools
             })

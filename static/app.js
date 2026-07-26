@@ -298,9 +298,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     mcpIndicator.className = 'mcp-indicator offline';
                 }
 
-                // Render Tools List in Modal
+                // Render Tools List & Server Statuses in Modal
                 mcpToolsList.innerHTML = '';
-                if (state.mcpTools.length === 0) {
+
+                // Show server status warnings if any server failed
+                if (data.statuses && Array.isArray(data.statuses)) {
+                    data.statuses.forEach(s => {
+                        if (!s.running && s.error) {
+                            const errCard = document.createElement('div');
+                            errCard.className = 'tool-card';
+                            errCard.style.borderColor = 'rgba(244, 63, 94, 0.4)';
+                            errCard.style.background = 'rgba(244, 63, 94, 0.08)';
+                            errCard.innerHTML = `
+                                <div class="tool-card-name" style="color: var(--accent-rose);">⚠️ Server Error: ${escapeHtml(s.name)}</div>
+                                <div class="tool-card-desc" style="color: #fca5a5;">${escapeHtml(s.error)}</div>
+                                ${s.stderr ? `<pre style="font-size: 11px; margin-top: 6px; background: rgba(0,0,0,0.4); padding: 6px; border-radius: 4px; overflow-x: auto;">${escapeHtml(s.stderr)}</pre>` : ''}
+                            `;
+                            mcpToolsList.appendChild(errCard);
+                        }
+                    });
+                }
+
+                if (state.mcpTools.length === 0 && mcpToolsList.children.length === 0) {
                     mcpToolsList.innerHTML = '<div class="modal-description">No active MCP tools registered.</div>';
                 } else {
                     state.mcpTools.forEach(t => {
