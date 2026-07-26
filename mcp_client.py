@@ -92,7 +92,7 @@ class MCPServerProcess:
             init_res = self._send_request("initialize", {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "SimpleChat", "version": "1.0.0"}
+                "clientInfo": {"name": "Mesopycnic", "version": "1.0.0"}
             }, timeout=8.0)
 
             if not init_res:

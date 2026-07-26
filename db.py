@@ -4,7 +4,7 @@ import uuid
 import os
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.environ.get("SIMPLECHAT_DB_PATH", "simplechat.db")
+DB_PATH = os.environ.get("MESOPYCNIC_DB_PATH", "mesopycnic.db")
 
 class Database:
     def __init__(self, db_path: str = DB_PATH):

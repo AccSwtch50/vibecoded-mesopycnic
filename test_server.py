@@ -7,7 +7,7 @@ import threading
 import os
 
 from db import Database
-from server import SimpleChatHandler, db, mcp_manager
+from server import MesopycnicHandler, db, mcp_manager
 
 class TestServerIntegration(unittest.TestCase):
     @classmethod
@@ -21,7 +21,7 @@ class TestServerIntegration(unittest.TestCase):
         db._init_db()
 
         socketserver.TCPServer.allow_reuse_address = True
-        cls.server = socketserver.TCPServer(("127.0.0.1", 0), SimpleChatHandler)
+        cls.server = socketserver.TCPServer(("127.0.0.1", 0), MesopycnicHandler)
         cls.port = cls.server.server_address[1]
         cls.server_thread = threading.Thread(target=cls.server.serve_forever)
         cls.server_thread.daemon = True
@@ -37,12 +37,12 @@ class TestServerIntegration(unittest.TestCase):
             os.remove(cls.test_db)
 
     def test_static_index(self):
-        url = f"{self.base_url}/"
+        url = f"{cls.base_url}/"
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req) as resp:
             self.assertEqual(resp.status, 200)
             content = resp.read().decode("utf-8")
-            self.assertIn("<title>SimpleChat", content)
+            self.assertIn("<title>Mesopycnic", content)
 
     def test_conversations_api(self):
         # 1. Create conversation

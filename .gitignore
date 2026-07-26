@@ -61,6 +61,7 @@ local_settings.py
 # SQLite databases
 *.db
 *.db-journal
+mesopycnic.db
 simplechat.db
 db.sqlite3
 db.sqlite3-journal

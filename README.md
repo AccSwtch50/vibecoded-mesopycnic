@@ -1,6 +1,6 @@
-# ⚡ SimpleChat
+# ⚡ Mesopycnic
 
-**SimpleChat** is a lightweight, ultra-fast, low-footprint AI chat frontend designed to run seamlessly on constrained systems (4GB RAM laptops, Raspberry Pi) and mobile devices (using Python via Termux on Android). 
+**Mesopycnic** is a lightweight, ultra-fast, low-footprint AI chat frontend designed to run seamlessly on constrained systems (4GB RAM laptops, Raspberry Pi) and mobile devices (using Python via Termux on Android). 
 
 It features native support for **Model Context Protocol (MCP)** servers, real-time **Chain-of-Thought (CoT)** reasoning visualization, persistent **SQLite3** chat history, and full compatibility with any **OpenAI-compatible API**.
 
@@ -12,7 +12,7 @@ It features native support for **Model Context Protocol (MCP)** servers, real-ti
 - **🛠️ Native Model Context Protocol (MCP) Support**: Connect stdio MCP tool servers (Python, Node.js, `npx`, `uvx`, or custom binaries) configured via `mcp_servers.json`. Automatically translates tool schemas and handles multi-turn tool execution.
 - **🧠 Chain-of-Thought (CoT) Reasoning View**: Dedicated collapsible reasoning container with live duration spinners for reasoning models (DeepSeek R1, OpenAI o1/o3-mini, Ollama thinking models, etc.).
 - **🤖 Any OpenAI-Compatible API**: Works with OpenAI, OpenRouter, Groq, Ollama, LM Studio, vLLM, DeepSeek, or any custom endpoint base URL.
-- **💾 Local SQLite3 Storage**: Conversations, messages, tool execution logs, and API settings are stored locally in `simplechat.db`.
+- **💾 Local SQLite3 Storage**: Conversations, messages, tool execution logs, and API settings are stored locally in `mesopycnic.db`.
 - **🎨 Glassmorphic Dark UI**: High-aesthetic responsive web interface with markdown rendering, syntax code highlighting, and copy buttons. Mobile & Termux ready.
 
 ---
@@ -25,7 +25,7 @@ flowchart TD
     
     API["Python Backend (server.py)\n- Threading HTTP Server\n- REST & SSE Stream Router\n- Agentic Tool Execution Loop"]
     
-    DB[("SQLite3 Database\n(simplechat.db)\n- Conversations & Messages\n- Local Settings")]
+    DB[("SQLite3 Database\n(mesopycnic.db)\n- Conversations & Messages\n- Local Settings")]
     
     MCP["MCP Manager (mcp_client.py)\n- Stdio JSON-RPC 2.0 Client\n- Auto Tool Discovery & Execution"]
     
@@ -44,7 +44,7 @@ flowchart TD
 ### 1. Prerequisites
 - **Python 3.8+** (No `pip install` required!)
 
-### 2. Run SimpleChat
+### 2. Run Mesopycnic
 ```bash
 git clone https://github.com/AccSwtch50/vibecoded-mesopycnic.git
 cd vibecoded-mesopycnic
@@ -68,7 +68,11 @@ MCP tool servers are configured in `mcp_servers.json` in the root project direct
     },
     "parallel-search": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://search.parallel.ai/mcp"],
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://search.parallel.ai/mcp"
+      ],
       "enabled": true
     }
   }
@@ -100,7 +104,7 @@ MCP tool servers are configured in `mcp_servers.json` in the root project direct
 
 ## 🧪 Running Tests
 
-SimpleChat comes with an automated unit and integration test suite:
+Mesopycnic comes with an automated unit and integration test suite:
 
 ```bash
 python3 -m unittest discover -p "test_*.py"

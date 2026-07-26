@@ -4,7 +4,7 @@ from db import Database
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
-        self.test_db_path = "test_simplechat.db"
+        self.test_db_path = "test_mesopycnic.db"
         if os.path.exists(self.test_db_path):
             os.remove(self.test_db_path)
         self.db = Database(self.test_db_path)

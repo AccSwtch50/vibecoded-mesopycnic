@@ -15,7 +15,7 @@ class OpenAIService:
         key = api_key if api_key else self.default_api_key
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": "SimpleChat/1.0"
+            "User-Agent": "Mesopycnic/1.0"
         }
         if key:
             headers["Authorization"] = f"Bearer {key}"
