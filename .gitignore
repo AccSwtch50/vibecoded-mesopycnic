@@ -65,6 +65,9 @@ simplechat.db
 db.sqlite3
 db.sqlite3-journal
 
+# Internal project memory
+memory/
+
 # Flask stuff:
 instance/
 .webassets-cache
