@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "math_and_time": {
+      "command": "python3",
+      "args": ["sample_mcp_server.py"],
+      "enabled": true
+    },
+    "parallel-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://search.parallel.ai/mcp"
+      ],
+      "enabled": true
+  }
+}
